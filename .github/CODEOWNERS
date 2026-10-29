@@ -1,0 +1,7 @@
+# Troque SEU_USUARIO pelo seu usuário do GitHub.
+# Quem altera estes arquivos precisa da sua aprovação (evita "colar" nos testes).
+/tests/                  @SEU_USUARIO
+/.github/                @SEU_USUARIO
+/package.json            @SEU_USUARIO
+/package-lock.json       @SEU_USUARIO
+/playwright.config.js    @SEU_USUARIO

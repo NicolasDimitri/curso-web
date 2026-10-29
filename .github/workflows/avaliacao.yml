@@ -1,0 +1,50 @@
+name: Autoavaliação
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  avaliar:            # <- este é o nome do "check" que será exigido na proteção da main
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      - name: Descobrir quais projetos foram alterados no PR
+        id: proj
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          LISTA=$(git diff --name-only "origin/$BASE...HEAD" \
+            | grep -oE '^projetos/[^/]+' | sort -u | sed 's#projetos/##' | tr '\n' ' ')
+          echo "Projetos alterados: ${LISTA:-nenhum}"
+          echo "lista=$LISTA" >> "$GITHUB_OUTPUT"
+
+      - name: Rodar testes dos projetos alterados
+        env:
+          LISTA: ${{ steps.proj.outputs.lista }}
+        run: |
+          if [ -z "$LISTA" ]; then
+            echo "::error::Nenhum arquivo dentro de projetos/<nome-do-projeto>/ foi alterado neste PR."
+            exit 1
+          fi
+          ARQS=""
+          for p in $LISTA; do
+            if [ -f "tests/$p.spec.js" ]; then ARQS="$ARQS tests/$p.spec.js"; fi
+          done
+          if [ -z "$ARQS" ]; then
+            echo "::error::Não existe teste para: $LISTA"
+            exit 1
+          fi
+          npx playwright test $ARQS
